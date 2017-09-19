@@ -9,93 +9,96 @@ object JSON {
   case class JArray(get: IndexedSeq[JSON]) extends JSON
   case class JObject(get: Map[String, JSON]) extends JSON
 
-  def jsonParser[Err, Parser[+_]](P:Parsers[Err, Parser]): Parser[JSON] = {
+  def jsonParser[AParser[+_]](P:Parsers[AParser]): AParser[JSON] = {
     import P._
 
-    def sign:Parser[String] =
+    def sign:AParser[String] =
       "-" | ""
 
-    def digit1to9:Parser[String] =
+    def digit1to9:AParser[String] =
       "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
 
-    def digit:Parser[String] =
+    def digit:AParser[String] =
       "0" | digit1to9
 
-    def digits: Parser[List[String]] =
+    def digits: AParser[List[String]] =
       many(digit)
 
-    def int:Parser[String] =
+    def int:AParser[String] =
       (sign ** digit1to9 ** digits).map { case sign ** d1to9 ** ds => ds.mkString(s"$sign$d1to9", "", "") } |
       (sign ** digit).map { case sign ** d => s"$sign$d" }
 
-    def frac:Parser[String] =
+    def frac:AParser[String] =
       "." ** digits map { case per ** ds => ds.mkString(per,"","")}
 
-    def exp:Parser[String] =
+    def exp:AParser[String] =
       ("e" | "E") ** ("+" | "-" | "") ** many1(digit) map { case e ** sign ** ds => ds.mkString(s"$e$sign","","") }
 
-    def hex:Parser[String] =
+    def hex:AParser[String] =
       """[0-9a-fA-F]""".r
 
-    def unicodeChar:Parser[String] =
-      "u" ** listOfN(4,hex) map { case "u" ** hexes => Integer.parseInt(hexes.mkString(""),16).toChar.toString }
+    def unicodeChar:AParser[String] =
+      "u" *> listOfN(4,hex) map (hexes => Integer.parseInt(hexes.mkString(""), 16).toChar.toString)
 
-    def backslash:Parser[String] =
+    def backslash:AParser[String] =
       string("\\")
 
-    def slash:Parser[String] =
+    def slash:AParser[String] =
       string("/")
 
-    def bell:Parser[String] =
+    def bell:AParser[String] =
       string("b") map (_ => "\b")
 
-    def formFeed:Parser[String] =
+    def formFeed:AParser[String] =
       string("f") map (_ => "\f")
 
-    def newLine:Parser[String] =
+    def newLine:AParser[String] =
       string("n") map (_ => "\n")
 
-    def carriageReturn:Parser[String] =
+    def carriageReturn:AParser[String] =
       string("r") map ( _ => "\r")
 
-    def tab:Parser[String] =
+    def tab:AParser[String] =
       string("t") map ( _ => "\t")
 
-    def controlChar:Parser[String] =
+    def controlChar:AParser[String] =
       "\\" ** (unicodeChar | backslash | slash | bell | formFeed | newLine | carriageReturn | tab) map { case _ ** res => res }
 
-    def jString:Parser[JString] =
-      "\"" *> many(controlChar | anyChar).map(_.mkString).map(JString) <* "\""
+    def jString:AParser[JString] =
+      "\"" *> many(attempt(controlChar) or noneOf("\"")).map(_.mkString).map(JString) <* "\""
 
-    def jBool:Parser[JBool] =
+    def jBool:AParser[JBool] =
       ("true" | "false").map(_.toBoolean).map(JBool)
 
-    def jNull:Parser[JNull.type ] =
+    def jNull:AParser[JNull.type] =
       "null" *> succeed(JNull)
 
-    def jNumber:Parser[JNumber] =
+    def jNumber:AParser[JNumber] =
       (
-            (int ** frac ** exp).map { case i ** f ** e => s"$i$f$e".toDouble }
-          | (int ** frac       ).map { case i ** f      => s"$i$f".toDouble }
-          | (int ** exp        ).map { case i ** e      => s"$i$e".toDouble }
+            attempt(int ** frac ** exp).map { case i ** f ** e => s"$i$f$e".toDouble }
+          | attempt(int ** frac       ).map { case i ** f      => s"$i$f".toDouble }
+          | attempt(int ** exp        ).map { case i ** e      => s"$i$e".toDouble }
           | int.map(_.toDouble)
         ).map(JNumber)
 
-    def jPair:Parser[(String, JSON)] =
-      ((jString <* whitespaces ** ":" ** whitespaces) ** jValue) map { case JString(key) ** value => key -> value }
+    def jPair:AParser[(String, JSON)] =
+      ((jString <* separators ** ":" ** separators) ** jValue) map { case JString(key) ** value => key -> value }
 
-    def members:Parser[List[(String, JSON)]] =
-      sep(jPair, whitespaces ** "," ** whitespaces)
+    def members:AParser[List[(String, JSON)]] =
+      attempt(sep1(jPair, separators ** "," ** separators)) or attempt(jPair.map(List(_))) or succeed(Nil)
 
-    def jObject:Parser[JObject] =
-      ("{" ** whitespaces *> members <* whitespaces ** "}") map (members => JObject(members.toMap[String, JSON]))
+    def values:AParser[List[JSON]] =
+      attempt(sep1(jValue, separators ** "," ** separators)) or attempt(jValue.map(List(_))) or succeed(Nil)
 
-    def jArray:Parser[JArray] =
-      ("[" ** whitespaces *> sep(jValue, whitespaces ** "," ** whitespaces) <* "]") map (elements => JArray(elements.toArray))
+    def jObject:AParser[JObject] =
+      attempt("{" ** separators *> members <* separators ** "}") map (members => JObject(members.toMap[String, JSON]))
 
-    def jValue:Parser[JSON] =
-      jString | jNumber | jBool | jNull | jObject | jArray
+    def jArray:AParser[JArray] =
+      attempt("[" ** separators *> values <* "]") map (elements => JArray(elements.toArray[JSON]))
 
-    whitespaces *> (jObject | jArray) <* whitespaces
+    def jValue:AParser[JSON] =
+      attempt(jString) | attempt(jNumber) | attempt(jBool) | attempt(jNull) | attempt(jObject) | attempt(jArray)
+
+    separators *> (jObject | jArray) <* separators
   }
 }
