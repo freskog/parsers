@@ -1,3 +1,5 @@
+package chapter9
+
 
 import scala.util.matching.Regex
 
@@ -112,6 +114,9 @@ abstract class Parsers[AParser[+_]] { self =>
 
   def separators:AParser[List[String]] =
     many(whitespace | newline)
+
+  def opt[A](p:AParser[A]):AParser[Option[A]] =
+    attempt(p.map(Some(_))) or succeed(None)
 
   case class ParserOps[A](p:AParser[A]) {
 

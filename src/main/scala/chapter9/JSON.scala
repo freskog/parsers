@@ -1,7 +1,10 @@
+package chapter9
+
 
 trait JSON
 
 object JSON {
+
   case object JNull extends JSON
   case class JNumber(get: Double) extends JSON
   case class JString(get: String) extends JSON
@@ -13,7 +16,7 @@ object JSON {
     import P._
 
     def sign:AParser[String] =
-      "-" | ""
+      opt("-") map (_.getOrElse(""))
 
     def digit1to9:AParser[String] =
       "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
