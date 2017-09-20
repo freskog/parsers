@@ -43,18 +43,10 @@ abstract class RandFunctions[F[+_]] extends StateFunctions[RNG, F] { self =>
 case class Rand[+A](run: RNG => (RNG, A))
 
 object Rand extends RandFunctions[Rand] {
+
   override def run[A](fa: Rand[A])(s: RNG): (RNG, A) =
     fa.run(s)
 
-  override def unit[A](a: A): Rand[A] =
-    Rand( rng => (rng, a))
-
-  override def flatMap[A, B](fa: Rand[A])(f: A => Rand[B]): Rand[B] =
-    Rand( rng => fa.run(rng) match { case (aRng, a) => f(a).run(aRng) })
-
-  override def get: Rand[RNG] =
-    Rand( rng => (rng, rng) )
-
-  override def put(s: RNG): Rand[Unit] =
-    Rand( _ => (s, ()))
+  override def instance[A](f: (RNG) => (RNG, A)): Rand[A] =
+    Rand(f)
 }

@@ -57,15 +57,6 @@ object CandyMachineService extends CandyMachineService[CandyMachine] {
   override def run[A](fa: CandyMachine[A])(s: Machine): (Machine, A) =
     fa.run(s)
 
-  override def unit[A](a: A): CandyMachine[A] =
-    CandyMachine( m => (m, a))
-
-  override def flatMap[A, B](fa: CandyMachine[A])(f: (A) => CandyMachine[B]): CandyMachine[B] =
-    CandyMachine( m => fa.run(m) match { case (aMachine,a) => f(a).run(aMachine) } )
-
-  override def get: CandyMachine[Machine] =
-    CandyMachine( m => (m, m))
-
-  override def put(s: Machine): CandyMachine[Unit] =
-    CandyMachine( _ => (s,()))
+  override def instance[A](f: (Machine) => (Machine, A)): CandyMachine[A] =
+    CandyMachine(f)
 }

@@ -3,15 +3,21 @@ package chapter6
 
 abstract class StateFunctions[S,F[+_]] { self =>
 
+  def instance[A](f:S => (S,A)):F[A]
+
   def run[A](fa:F[A])(s:S):(S,A)
 
-  def unit[A](a: A):F[A]
+  def unit[A](a: A):F[A] =
+    instance( s => (s, a))
 
-  def flatMap[A,B](fa:F[A])(f:A => F[B]):F[B]
+  def flatMap[A,B](fa:F[A])(f:A => F[B]):F[B] =
+    instance( s => run(fa)(s) match { case (aS, a) => run(f(a))(aS) })
 
-  def get:F[S]
+  def get:F[S] =
+    instance( s => (s,s))
 
-  def put(s:S):F[Unit]
+  def put(s:S):F[Unit] =
+    instance( _ => (s,()))
 
   def modify(f: S => S):F[Unit] =
     get map f flatMap put
