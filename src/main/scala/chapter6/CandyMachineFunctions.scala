@@ -43,20 +43,20 @@ sealed trait Input
 case object Coin extends Input
 case object Turn extends Input
 
-abstract class CandyMachineService[F[+_]] extends StateFunctions[Machine, F] {
+abstract class CandyMachineFunctions[F[+_]] extends StateFunctions[Machine, F] {
 
   def simulateMachine(inputs:List[Input]):F[Result] =
     traverse(inputs)(a => modify(_.process(a))) *> gets(_.toResult)
 
 }
 
-case class CandyMachine[+A](run: Machine => (Machine, A))
+case class CandyMachineService[+A](run: Machine => (Machine, A))
 
-object CandyMachineService extends CandyMachineService[CandyMachine] {
+object CandyMachineService extends CandyMachineFunctions[CandyMachineService] {
 
-  override def run[A](fa: CandyMachine[A])(s: Machine): (Machine, A) =
-    fa.run(s)
+  override def run[A](fa: CandyMachineService[A])(s: Machine): (Machine, A) =
+    fa run s
 
-  override def instance[A](f: (Machine) => (Machine, A)): CandyMachine[A] =
-    CandyMachine(f)
+  override def instance[A](f: (Machine) => (Machine, A)): CandyMachineService[A] =
+    CandyMachineService(f)
 }
