@@ -25,6 +25,11 @@ sealed abstract class Stream[+A] {
     case h :#: t => f(h, t().foldRight(z)(f))
   }
 
+  def foldLeft[B](z:B)(f:(B,A) => B):B = this match {
+    case Empty => z
+    case h :#: t => t().foldLeft(f(z,h))(f)
+  }
+
   def zip[B](other:Stream[B]):Stream[(A,B)] = (this,other) match {
     case (Empty, _) | (_, Empty) => Empty
     case (x :#: xs, y :#: ys) => Stream.cons((x,y), xs() zip ys())
