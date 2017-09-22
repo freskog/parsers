@@ -40,7 +40,6 @@ sealed abstract class Stream[+A] {
     case h :#: t => if(p(h)) Some(h) else t() find p
   }
 
-
   def take(n:Int):Stream[A] = this match {
     case Empty => Empty
     case h :#: t => if(n <= 0) Empty else Stream.cons(h, t() take n - 1)
@@ -53,7 +52,6 @@ sealed abstract class Stream[+A] {
     case Empty => "Empty"
     case h :#: _ => s"$h :#: _"
   }
-
 
 }
 case object Empty extends Stream[Nothing]
