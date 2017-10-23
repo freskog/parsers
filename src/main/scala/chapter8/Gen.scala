@@ -9,6 +9,9 @@ abstract class GenFunctions[F[+_]] extends RandFunctions[F] {
     def contains(x:Double):Boolean = x >= start && x < end
   }
 
+  def optionOf[A](fa:F[A]):F[Option[A]] =
+    weighted((unit(None),20.0),(fa map (Option(_)),80))
+
   def listOf[A](fa:F[A]):F[List[A]] =
     nonNegativeLessThan(100) flatMap (a => listOfN(a, fa))
 
@@ -18,6 +21,15 @@ abstract class GenFunctions[F[+_]] extends RandFunctions[F] {
 
   def choose[A](start:Int, stopExclusive:Int): F[Int] =
     int map (_ % (stopExclusive - start)) map ( _ + start)
+
+  def alpha:F[Char] =
+    choose('a'.toInt,'z'.toInt + 1) map (_.toChar)
+
+  def alphaNum:F[Char] =
+    union(alpha,choose('0'.toInt,'9'.toInt+1) map (_.toChar))
+
+  def string:F[String] =
+    listOf(alphaNum).map(_.mkString)
 
   def boolean:F[Boolean] =
     int map (_ % 2 == 0)
@@ -33,7 +45,6 @@ abstract class GenFunctions[F[+_]] extends RandFunctions[F] {
     }
 
   def forAll[A](fa:F[A])(p: A => Boolean):Prop
-
 
 }
 
@@ -69,6 +80,8 @@ case class Falsified(failure: String, successes:Int) extends Result
 
 case class Gen[+A](run:RNG => (RNG, A))
 object Gen extends GenFunctions[Gen] {
+
+  def apply[A](implicit G:Gen[A]):Gen[A] = G
 
   override def forAll[A](fa: Gen[A])(p: A => Boolean):Prop = Prop { (n,rng) =>
     randomStream(fa)(rng).zip(Stream.from(0)).take(n).map {

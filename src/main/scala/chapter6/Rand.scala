@@ -38,6 +38,7 @@ abstract class RandFunctions[F[+_]] extends StateFunctions[RNG, F] { self =>
       i <- nonNegativeInt
       result <- if(i + (n-1) - (i % n) >= 0) unit(i % n) else nonNegativeLessThan(n)
     } yield result
+
 }
 
 case class Rand[+A](run: RNG => (RNG, A))
