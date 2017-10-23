@@ -43,6 +43,14 @@ object Monoid extends MonoidInstances {
     else v.splitAt(v.length / 2) match {
       case (left, right) => par(m).op(parFoldMap(left,m)(f),parFoldMap(right,m)(f))
     }
+
+  def productMonoid[A,B](A: Monoid[A], B: Monoid[B]): Monoid[(A,B)] =
+    Monoid.instance[(A,B)] {
+      case ((a1,b1),(a2,b2)) => (Monoid[A].op(a1,a2),Monoid[B].op(b1,b2))
+    }((Monoid[A].zero,Monoid[B].zero))
+
+  def bag[A](as: IndexedSeq[A]): Map[A, Int] =
+    foldMapV(as,Monoid[Map[A,Int]])(k => Map(k -> 1))
 }
 
 trait MonoidInstances {
@@ -70,6 +78,14 @@ trait MonoidInstances {
 
   def endo[A]: Monoid[A => A] =
     instance[A => A](_ andThen _)(identity)
+
+  def map[K,V : Monoid]:Monoid[Map[K,V]] =
+    instance[Map[K,V]] {
+      case (m1,m2) =>
+        Monoid.foldMap(m1.keys.toList,Monoid[Map[K,V]])(
+            k => m2.updated[V](k, m2.getOrElse[V](k, Monoid[V].zero))
+          )
+    }(Map.empty[K,V])
 
 }
 
@@ -103,6 +119,6 @@ object MonoidTest extends MonoidInstances with MonoidLaws {
     println(s"bool or : ${monoidLaws(booleanAnd)(Gen.boolean).check(0, rng)}")
     println(s"option int : ${monoidLaws(option(intAdd))(Gen.optionOf(Gen.int)).check(0, rng)}")
     println(s"endo add int : ${monoidLaws(endo[Int])(Gen.unit[Int => Int](_ + 1)).check(0, rng)}")
-    println(s"wc : ${monoidLaws(wc)(WC.genWC).check(0,rng)}")
+    println(s"wc : ${monoidLaws(WC.wc)(WC.genWC).check(0,rng)}")
   }
 }
