@@ -16,7 +16,7 @@ case class SimpleRNG(seed:Long) extends RNG {
   }
 }
 
-abstract class RandFunctions[F[+_]] extends StateFunctions[RNG, F] { self =>
+abstract class RandFunctions[F[+_]] extends StateF[RNG, F] { self =>
 
   def int:F[Int] =
     get map (_.nextInt) flatMap { case (rng, i) => put(rng).map(_ => i) }

@@ -1,6 +1,8 @@
 package chapter12
 
+import chapter10.Monoid
 import chapter11.Functor
+import chapter11.Functor.Id
 
 abstract class Applicative[F[_]] extends Functor[F] { self =>
 
@@ -61,7 +63,9 @@ abstract class Applicative[F[_]] extends Functor[F] { self =>
 
 object Applicative {
 
-  def validationApplicative[E]:Applicative[Validation[E,?]] =
+  def apply[F[_]](implicit F:Applicative[F]):Applicative[F] = F
+
+  implicit def validationApplicative[E]:Applicative[Validation[E,?]] =
     new Applicative[Validation[E,?]] {
       override def unit[A](a: A): Validation[E, A] =
         Success(a)
@@ -74,4 +78,25 @@ object Applicative {
       }
     }
 
+  implicit val idApplicative:Applicative[Id] =
+    new Applicative[Id] {
+
+      override def map2[A, B, C](fa: => Id[A], fb: => Id[B])(f: (A, B) => C): Id[C] =
+        f(fa,fb)
+
+      override def unit[A](a: A): Id[A] =
+        a
+    }
+
+  type Const[M,A] = M
+
+  implicit def monoidApplicative[M](M:Monoid[M]):Applicative[Const[M,?]] =
+    new Applicative[Const[M, ?]] {
+
+      override def map2[A, B, C](fa: => Const[M, A], fb: => Const[M, B])(f: (A, B) => C): Const[M, C] =
+        M.op(fa,fb)
+
+      override def unit[A](a: A): Const[M, A] =
+        M.zero
+    }
 }

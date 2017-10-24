@@ -1,5 +1,6 @@
 package chapter11
 import chapter12.Applicative
+import chapter6.State
 import chapter7.Par
 import chapter8.Gen
 import chapter9.Parser
@@ -96,4 +97,14 @@ object Monad {
       override def flatMap[A, B](ma: Either[E, A])(f: A => Either[E, B]):Either[E,B] =
         ma.flatMap(f)
     }
+
+  def stateMonad[S]: Monad[State[S,?]] =
+    new Monad[State[S,?]] {
+      override def unit[A](a: A): State[S, A] =
+        State.unit[S,A](a)
+
+      override def flatMap[A, B](ma: State[S, A])(f: A => State[S, B]): State[S, B] =
+        ma.flatMap(f)
+    }
+
 }

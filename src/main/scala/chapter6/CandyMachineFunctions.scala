@@ -43,7 +43,7 @@ sealed trait Input
 case object Coin extends Input
 case object Turn extends Input
 
-abstract class CandyMachineFunctions[F[+_]] extends StateFunctions[Machine, F] {
+abstract class CandyMachineFunctions[F[+_]] extends StateF[Machine, F] {
 
   def simulateMachine(inputs:List[Input]):F[Result] =
     traverse(inputs)(a => modify(_.process(a))) *> gets(_.toResult)

@@ -1,7 +1,7 @@
 package chapter6
 
 
-abstract class StateFunctions[S,F[+_]] { self =>
+trait StateF[S,F[+_]] { self =>
 
   def instance[A](f:S => (S,A)):F[A]
 
@@ -53,5 +53,31 @@ abstract class StateFunctions[S,F[+_]] { self =>
     def *>[B](fb:F[B]):F[B] = self.dropLeft(fa,fb)
     def <*[B](fb:F[B]):F[A] = self.dropRight(fa,fb)
   }
+
+}
+
+case class State[S,A](run:S => (S,A)) { self =>
+
+  def flatMap[B](f:A => State[S,B]):State[S,B] =
+    State( s => run(s) match { case (aS, a) => f(a).run(aS) })
+
+  def map[B](f:A => B):State[S,B] =
+    State( s => run(s) match { case (aS, a) => (aS,f(a)) })
+}
+
+object State {
+  def unit[S,A](a: A):State[S,A] =  State(s => (s,a))
+
+  def get[S]:State[S,S] =
+    State( s => (s,s))
+
+  def put[S](s:S):State[S,Unit] =
+    State( _ => (s,()))
+
+  def modify[S](f: S => S):State[S,Unit] =
+    State(s => (f(s),()))
+
+  def gets[S,A](f: S => A):State[S,A] =
+    State(s => (s,f(s)))
 
 }
