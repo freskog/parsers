@@ -1,19 +1,30 @@
 package chapter11
+import chapter12.Applicative
 import chapter7.Par
 import chapter8.Gen
 import chapter9.Parser
 
-abstract class Monad[F[_]] extends Functor[F] {
+abstract class Monad[F[_]] extends Applicative[F] {
 
   def unit[A](a:A):F[A]
-
   def flatMap[A,B](ma:F[A])(f: A => F[B]):F[B]
 
-  def map[A,B](ma:F[A])(f:A => B):F[B] =
+  /*
+   def flatMap[A,B](ma:F[A])(f: A => F[B]):F[B] =
+    compose[F[A],A,B](identity, f)(ma)
+  */
+
+  def join[A](ffa:F[F[A]]):F[A] =
+    flatMap(ffa)(identity)
+
+  override def map[A,B](ma:F[A])(f:A => B):F[B] =
     flatMap(ma)(a => unit(f(a)))
 
-  def map2[A,B,C](ma:F[A],mb:F[B])(f:(A,B) => C):F[C] =
+  def map2[A,B,C](ma: => F[A],mb: => F[B])(f:(A,B) => C):F[C] =
     flatMap(ma)(a => map(mb)(b => f(a,b)))
+
+  def compose[A,B,C](f:A => F[B],g:B => F[C]):A => F[C] =
+    a => flatMap(f(a))(g)
 
 }
 
@@ -77,4 +88,12 @@ object Monad {
         List(a)
     }
 
+  def eitherMonad[E]: Monad[Either[E,?]] =
+    new Monad[Either[E, ?]] {
+      override def unit[A](a: A):Either[E,A] =
+        Right(a)
+
+      override def flatMap[A, B](ma: Either[E, A])(f: A => Either[E, B]):Either[E,B] =
+        ma.flatMap(f)
+    }
 }
