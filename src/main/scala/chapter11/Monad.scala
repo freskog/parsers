@@ -1,5 +1,5 @@
 package chapter11
-import chapter12.Applicative
+import chapter12.{Applicative, Traverse}
 import chapter6.State
 import chapter7.Par
 import chapter8.Gen
@@ -30,6 +30,16 @@ abstract class Monad[F[_]] extends Applicative[F] {
 }
 
 object Monad {
+
+  def composeM[F[_],G[_]](F: Monad[F], G: Monad[G], T: Traverse[G]): Monad[Lambda[x => F[G[x]]]] =
+    new Monad[Lambda[x => F[G[x]]]] {
+      override def unit[A](a: A): F[G[A]] =
+        F.unit(G.unit(a))
+
+      override def flatMap[A, B](ma: F[G[A]])(f: A => F[G[B]]): F[G[B]] =
+        F.map(F.join(F.map(ma)(ga => T.sequence[F,G[B]](G.map(ga)(f))(F))))(ggb => G.join(ggb))
+    }
+
 
   import chapter5.Stream
 
