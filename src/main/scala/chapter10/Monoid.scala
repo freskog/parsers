@@ -44,22 +44,27 @@ object Monoid extends MonoidInstances {
       case (left, right) => par(m).op(parFoldMap(left,m)(f),parFoldMap(right,m)(f))
     }
 
-  def productMonoid[A,B](A: Monoid[A], B: Monoid[B]): Monoid[(A,B)] =
+  def productMonoid[A,B](ma: Monoid[A], mb: Monoid[B]): Monoid[(A,B)] =
     Monoid.instance[(A,B)] {
-      case ((a1,b1),(a2,b2)) => (Monoid[A].op(a1,a2),Monoid[B].op(b1,b2))
-    }((Monoid[A].zero,Monoid[B].zero))
+      case ((a1,b1),(a2,b2)) => (ma.op(a1,a2),mb.op(b1,b2))
+    }((ma.zero,mb.zero))
 
-  def bag[A](as: IndexedSeq[A]): Map[A, Int] =
-    foldMapV(as,Monoid[Map[A,Int]])(k => Map(k -> 1))
+  def bag[A](as: IndexedSeq[A], m:Monoid[Map[A,Int]]): Map[A, Int] =
+    foldMapV(as,m)(k => Map(k -> 1))
 }
 
 trait MonoidInstances {
 
+  import chapter5.Stream
+
   val string: Monoid[String] =
     instance[String](_ + _)("")
 
-  def list[A]: Monoid[List[A]] =
+  def listConcat[A]: Monoid[List[A]] =
     instance[List[A]](_ ::: _)(Nil)
+
+  def streamConcat[A]: Monoid[Stream[A]] =
+    instance[Stream[A]](_ append _)(Stream.empty)
 
   val intAdd: Monoid[Int] =
     instance[Int](_ + _)(0)
@@ -79,12 +84,9 @@ trait MonoidInstances {
   def endo[A]: Monoid[A => A] =
     instance[A => A](_ andThen _)(identity)
 
-  def map[K,V : Monoid]:Monoid[Map[K,V]] =
+  def map[K,V ](mv:Monoid[V]):Monoid[Map[K,V]] =
     instance[Map[K,V]] {
-      case (m1,m2) =>
-        Monoid.foldMap(m1.keys.toList,Monoid[Map[K,V]])(
-            k => m2.updated[V](k, m2.getOrElse[V](k, Monoid[V].zero))
-          )
+      case (m1,m2) => m1.keys.foldLeft(m2)((m,k) => m.updated[V](k, mv.op(m1(k), m.getOrElse[V](k, mv.zero))))
     }(Map.empty[K,V])
 
 }
