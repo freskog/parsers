@@ -2,9 +2,11 @@ package chapter5
 
 sealed abstract class Stream[+A] {
 
+  import Stream.cons
+
   def map[B](f:A => B):Stream[B] = this match {
     case Empty => Empty
-    case h :#: t =>  Stream.cons(f(h), t().map(f))
+    case h :#: t =>  cons(f(h), t().map(f))
   }
 
   def flatMap[B](f: A => Stream[B]):Stream[B] = this match {
@@ -15,9 +17,19 @@ sealed abstract class Stream[+A] {
     }
   }
 
-  def append[A1 >: A](that:Stream[A1]):Stream[A1] = this match {
+  def headOption:Option[A] = this match {
+    case Empty => None
+    case h :#: _ => Option(h)
+  }
+
+  def tail:Stream[A] = this match {
+    case Empty => Empty
+    case _ :#: t => t()
+  }
+
+  def append[A1 >: A](that: => Stream[A1]):Stream[A1] = this match {
     case Empty => that
-    case h :#: t => Stream.cons(h, t() append that)
+    case h :#: t => cons(h, t() append that)
   }
 
   def foldRight[B](z:B)(f:(A,B) => B):B = this match {
@@ -30,10 +42,13 @@ sealed abstract class Stream[+A] {
     case h :#: t => t().foldLeft(f(z,h))(f)
   }
 
-  def zip[B](other:Stream[B]):Stream[(A,B)] = (this,other) match {
+  def zip[B](other: => Stream[B]):Stream[(A,B)] = (this,other) match {
     case (Empty, _) | (_, Empty) => Empty
-    case (x :#: xs, y :#: ys) => Stream.cons((x,y), xs() zip ys())
+    case (x :#: xs, y :#: ys) => cons((x,y), xs() zip ys())
   }
+
+  def zipWith[B,C](other: => Stream[B])(f:(A,B) => C):Stream[C] =
+    zip(other).map(f.tupled)
 
   def find(p: A => Boolean ):Option[A] = this match {
     case Empty => None
@@ -42,7 +57,7 @@ sealed abstract class Stream[+A] {
 
   def take(n:Int):Stream[A] = this match {
     case Empty => Empty
-    case h :#: t => if(n <= 0) Empty else Stream.cons(h, t() take n - 1)
+    case h :#: t => if(n <= 0) Empty else cons(h, t() take n - 1)
   }
 
   def toList[A1 >: A]:List[A] =
@@ -58,6 +73,17 @@ case object Empty extends Stream[Nothing]
 case class :#:[A](h: A, t: () => Stream[A]) extends Stream[A]
 
 object Stream {
+
+  implicit def convertOps[A1](s: => Stream[A1]):StreamOps[A1] =
+    new StreamOps[A1](s)
+
+  class StreamOps[A1](s: => Stream[A1]) {
+
+    def :#:[A2 >: A1](a: A2): Stream[A2] =
+      cons(a, s)
+
+
+  }
 
   def empty[A]:Stream[A] =
     Empty
