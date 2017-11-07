@@ -59,6 +59,13 @@ abstract class Applicative[F[_]] extends Functor[F] { self =>
     case     Nil => unit(List.empty[A])
     case a :: as => map2(filterM(as)(f),f(a))((acc,keep) => if(keep) a :: acc else acc)
   }
+
+  implicit def applicativeOperators[A](fa:F[A]):ApplicativeOps[A] = ApplicativeOps(fa)
+
+  case class ApplicativeOps[A](fa:F[A]) {
+    def *>[B](fb: => F[B]):F[B] = self.map2(fa,fb)((_,b) => b)
+    def <*[B](fb: => F[B]):F[A] = self.map2(fa,fb)((a,_) => a)
+  }
 }
 
 object Applicative {

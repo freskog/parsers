@@ -1,4 +1,4 @@
-package chapter3
+package unrelated
 
 sealed abstract class BTree[A : Ordering] {
 

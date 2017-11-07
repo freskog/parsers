@@ -5,7 +5,8 @@ import chapter7.Par
 import chapter8.Gen
 import chapter9.Parser
 
-abstract class Monad[F[_]] extends Applicative[F] {
+abstract class Monad[F[_]] extends Applicative[F] { self =>
+
 
   def unit[A](a:A):F[A]
   def flatMap[A,B](ma:F[A])(f: A => F[B]):F[B]
@@ -26,10 +27,19 @@ abstract class Monad[F[_]] extends Applicative[F] {
 
   def compose[A,B,C](f:A => F[B],g:B => F[C]):A => F[C] =
     a => flatMap(f(a))(g)
-
 }
 
 object Monad {
+
+  def apply[F[_]](implicit M:Monad[F]): Monad[F] = M
+
+  implicit def monadOperators[F[_] : Monad, A](ma: => F[A]):MonadOps[F,A] =
+    MonadOps(ma)
+
+  case class MonadOps[F[_] : Monad, A](ma:F[A]) {
+    def *>[B](fb: => F[B]):F[B] = Monad[F].map2(ma,fb)((_,b) => b)
+    def <*[B](fb: => F[B]):F[A] = Monad[F].map2(ma,fb)((a,_) => a)
+  }
 
   def composeM[F[_],G[_]](F: Monad[F], G: Monad[G], T: Traverse[G]): Monad[Lambda[x => F[G[x]]]] =
     new Monad[Lambda[x => F[G[x]]]] {
@@ -43,7 +53,7 @@ object Monad {
 
   import chapter5.Stream
 
-  val genMonad:Monad[Gen] =
+  implicit val genMonad:Monad[Gen] =
     new Monad[Gen] {
       override def flatMap[A, B](ma: Gen[A])(f: A => Gen[B]): Gen[B] =
         ma.flatMap(f)
@@ -52,7 +62,7 @@ object Monad {
         Gen.unit(a)
     }
 
-  val parMonad:Monad[Par] =
+  implicit val parMonad:Monad[Par] =
     new Monad[Par] {
       override def flatMap[A, B](ma: Par[A])(f: A => Par[B]): Par[B] =
         ma.flatMap(f)
@@ -61,7 +71,7 @@ object Monad {
         Par.unit(a)
     }
 
-  val parserMonad:Monad[Parser] =
+  implicit val parserMonad:Monad[Parser] =
     new Monad[Parser] {
       override def flatMap[A, B](ma: Parser[A])(f: A => Parser[B]): Parser[B] =
         ma.flatMap(f)
@@ -70,7 +80,7 @@ object Monad {
         Parser.succeed(a)
     }
 
-  val optionMonad:Monad[Option] =
+  implicit val optionMonad:Monad[Option] =
     new Monad[Option] {
 
       override def flatMap[A, B](ma: Option[A])(f: A => Option[B]): Option[B] =
@@ -80,7 +90,7 @@ object Monad {
         Option(a)
     }
 
-  val streamMonad: Monad[Stream] =
+  implicit val streamMonad: Monad[Stream] =
     new Monad[Stream] {
 
       override def flatMap[A, B](ma: Stream[A])(f: A => Stream[B]): Stream[B] =
@@ -90,7 +100,7 @@ object Monad {
         Stream(a)
     }
 
-  val listMonad: Monad[List] =
+  implicit val listMonad: Monad[List] =
     new Monad[List] {
       override def flatMap[A, B](ma: List[A])(f: A => List[B]): List[B] =
         ma.flatMap(f)
@@ -99,7 +109,7 @@ object Monad {
         List(a)
     }
 
-  def eitherMonad[E]: Monad[Either[E,?]] =
+  implicit def eitherMonad[E]: Monad[Either[E,?]] =
     new Monad[Either[E, ?]] {
       override def unit[A](a: A):Either[E,A] =
         Right(a)
@@ -108,13 +118,24 @@ object Monad {
         ma.flatMap(f)
     }
 
-  def stateMonad[S]: Monad[State[S,?]] =
+  implicit def stateMonad[S]: Monad[State[S,?]] =
     new Monad[State[S,?]] {
       override def unit[A](a: A): State[S, A] =
         State.unit[S,A](a)
 
       override def flatMap[A, B](ma: State[S, A])(f: A => State[S, B]): State[S, B] =
         ma.flatMap(f)
+    }
+
+  implicit val function0Monad:Monad[Function0] =
+    new Monad[Function0] {
+
+      override def flatMap[A,B](a: Function0[A])(f: A => Function0[B]): () => B =
+        () => f(a())()
+
+      override def unit[A](a: A): Function0[A] =
+        () => a
+
     }
 
 }
