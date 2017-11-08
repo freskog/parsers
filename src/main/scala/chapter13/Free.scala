@@ -81,6 +81,12 @@ object Free {
       override def apply[A](fa: Console[A]): ConsoleReader[A] = fa.toReader
     }
 
+  val consoleToState: Console ~> ConsoleState =
+    new (Console ~> ConsoleState) {
+      override def apply[A](fa: Console[A]): ConsoleState[A] = fa.toState
+
+    }
+
   def runConsoleFunction0[A](free:Free[Console, A]):Function0[A] =
     runFree(free)(consoleToFunction0)
 
@@ -92,6 +98,9 @@ object Free {
 
   def runConsoleReader[A](free:Free[Console, A]):ConsoleReader[A] =
     runFree(free)(consoleToReader)
+
+  def runConsoleState[A](free:Free[Console, A]):ConsoleState[A] =
+    runFree(free)(consoleToState)
 
   def translate[F[_],G[_],A](free: Free[F,A])(fg: F ~> G): Free[G,A] = {
     val convertFtoG = new (F ~> Free[G,?]) { def apply[A1](fa:F[A1]):Free[G, A1] = Suspend(fg(fa)) }

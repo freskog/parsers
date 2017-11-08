@@ -10,7 +10,7 @@ object FreeExperiments {
   /**
     * This can be used to test if the free implementation is stack safe.
     *
-    * Interpreting from ConsoleIO to ConsoleReader :
+    * Interpreting from ConsoleIO :
     *
     * Free.runConsoleFunction0(FreeExperiments.printN("",100000))() // This will blow up
     * Free.runStackSafeConsole(FreeExperiments.printN("",100000))   // will print many empty lines

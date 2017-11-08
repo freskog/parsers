@@ -9,6 +9,7 @@ sealed abstract class Console[A] {
   def toPar: Par[A]
   def toThunk: () => A
   def toReader: ConsoleReader[A]
+  def toState: ConsoleState[A]
 }
 
 case object ReadInt extends Console[Option[Int]] {
@@ -21,6 +22,9 @@ case object ReadInt extends Console[Option[Int]] {
 
   override def toReader: ConsoleReader[Option[Int]] =
     ConsoleReader(r => run(Option(r)))
+
+  override def toState: ConsoleState[Option[Int]] =
+    ConsoleState(b => (b.copy( in = if(b.in.isEmpty) Nil else b.in.tail),run(b.in.headOption)))
 
   def readInput:Option[String] =
     Try(StdIn.readLine("")).toOption
@@ -39,6 +43,9 @@ case class PrintLine(line:String) extends Console[Unit] {
 
   override def toReader: ConsoleReader[Unit] =
     ConsoleReader(_ => ())
+
+  override def toState: ConsoleState[Unit] =
+    ConsoleState(b => (b.copy(out = if(b.out.isEmpty) Nil else b.out.tail),()))
 }
 
 object Console {
